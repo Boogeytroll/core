@@ -22,6 +22,7 @@ class SwitchbotDevices:
     """Switchbot devices data."""
 
     switches: list[Device | Remote]
+    meters: list[Device]
 
 
 @dataclass
@@ -39,6 +40,17 @@ def prepare_device(
     coordinators: list[SwitchBotCoordinator],
 ) -> tuple[Device | Remote, SwitchBotCoordinator]:
     """Instantiate coordinator and adds to list for gathering."""
+    coordinator = SwitchBotCoordinator(hass, api, device)
+    coordinators.append(coordinator)
+    return (device, coordinator)
+
+def prepare_meter_device(
+    hass: HomeAssistant,
+    api: SwitchBotAPI,
+    device: Device,
+    coordinators: list[SwitchBotCoordinator],
+) -> tuple[Device, SwitchBotCoordinator]:
+    """Instantiate coordinator for Meter and adds to list for gathering."""
     coordinator = SwitchBotCoordinator(hass, api, device)
     coordinators.append(coordinator)
     return (device, coordinator)
@@ -62,6 +74,14 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry) -> bool:
     _LOGGER.debug("Devices: %s", devices)
     coordinators: list[SwitchBotCoordinator] = []
     hass.data.setdefault(DOMAIN, {})
+
+    # Assuming you have a method to differentiate meter devices and other devices
+    meter_devices = [device for device in devices if device.device_type == "Meter"]
+    meters = [
+        prepare_meter_device(hass, api, device, coordinators)
+        for device in meter_devices
+    ]
+
     data = SwitchbotCloudData(
         api=api,
         devices=SwitchbotDevices(
@@ -72,15 +92,16 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry) -> bool:
                 and device.device_type.startswith("Plug")
                 or isinstance(device, Remote)
             ],
+            meters=meters,  # Now meters is defined
         ),
     )
     hass.data[DOMAIN][config.entry_id] = data
     for device_type, devices in vars(data.devices).items():
         _LOGGER.debug("%s: %s", device_type, devices)
     await hass.config_entries.async_forward_entry_setups(config, PLATFORMS)
+    await hass.config_entries.async_forward_entry_setups(config, ["sensor"])
     await gather(*[coordinator.async_refresh() for coordinator in coordinators])
     return True
-
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
