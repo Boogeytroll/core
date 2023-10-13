@@ -1,15 +1,3 @@
-"""Base class for SwitchBot via API entities."""
-from typing import Any
-
-from switchbot_api import Commands, Device, Remote, SwitchBotAPI
-
-from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
-
-from .const import DOMAIN
-from .coordinator import SwitchBotCoordinator
-
-
 class SwitchBotCloudEntity(CoordinatorEntity[SwitchBotCoordinator]):
     """Representation of a SwitchBot Cloud entity."""
 
@@ -47,3 +35,15 @@ class SwitchBotCloudEntity(CoordinatorEntity[SwitchBotCoordinator]):
             command_type,
             parameters,
         )
+
+    @property
+    def current_value(self) -> float | None:
+        """Return the current value of the meter."""
+        # Your logic here to determine the current value of the meter
+        # This might involve fetching the latest data from the coordinator
+        # and returning the relevant attribute as the current value.
+
+        # Example:
+        # Assuming the coordinator stores the latest data in `self.coordinator.data`
+        # and this data includes a `value` attribute for meter devices
+        return self.coordinator.data.get("value")
